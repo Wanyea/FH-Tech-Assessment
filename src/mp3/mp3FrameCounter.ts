@@ -4,8 +4,8 @@ import { Mp3FrameCounterError } from "./errors.js";
 
 // MPEG header fields are bit-packed. These constants are the bit patterns for
 // MPEG Version 1 and Layer III after the header has been shifted into place.
-const MPEG_VERSION_1 = 0b11;
-const MPEG_LAYER_III = 0b01;
+const MPEG_VERSION_1 = 0b11; // MPEG Version 1 is indicated by the bits 11 in the version field of the header.
+const MPEG_LAYER_III = 0b01; // Layer III is indicated by the bits 01 in the layer field of the header.
 
 // Every MP3 frame begins with an 11-bit sync word. The mask isolates those bits
 // from the 32-bit frame header so random data does not parse as a frame.
@@ -39,7 +39,7 @@ const MPEG1_LAYER3_BITRATE_KBPS: ReadonlyArray<number | undefined> = [
   undefined,
 ];
 
-// The sample-rate field is a 2-bit index. Index 3 is reserved for this format.
+// The sample-rate field is a 2-bit index. Index 3 reserved per the specification.
 const MPEG1_SAMPLE_RATES_HZ: ReadonlyArray<number | undefined> = [
   44_100,
   48_000,
@@ -52,7 +52,8 @@ export interface Mp3FrameHeader {
   sampleRateHz: number;
   paddingBytes: number;
   frameLengthBytes: number;
-  channelMode: number;
+  channelMode: number; // For mono we allocate 21 bytes for side information, and for stereo we allocate 36 bytes. 
+                       // This is used to calculate the offset of the Xing/Info metadata frame.
 }
 
 export interface Mp3FrameCountResult {
@@ -60,7 +61,6 @@ export interface Mp3FrameCountResult {
   frameCount: number;
 
   // Raw frame count before excluding a possible leading Xing/Info/VBRI frame.
-  // NOTE: Do I need to account for possible leading metadata frames?? 
   physicalFrameCount: number;
   leadingMetadataFramesIgnored: number;
   firstFrameOffset: number;
@@ -93,7 +93,7 @@ export function countMp3Frames(input: Uint8Array): Mp3FrameCountResult {
   let lastFrameEndOffset = offset;
   let firstFrameHeader: Mp3FrameHeader | null = null;
 
-  while (offset <= effectiveLength - 4) {
+  while (offset <= effectiveLength - 4) { // Each audio frame has at leadt a 4 byte header
     const frame = parseMpeg1Layer3FrameHeader(input, offset);
 
     if (!frame) {
@@ -191,7 +191,7 @@ export function parseMpeg1Layer3FrameHeader(
     return null;
   }
 
-  const header = readUint32Be(bytes, offset);
+  const header = readUint32BigEndian(bytes, offset);
 
   if ((header & SYNC_MASK) >>> 0 !== SYNC_VALUE) {
     return null;
@@ -254,7 +254,7 @@ function getId3v2SkipLength(bytes: Uint8Array): number {
     throw new Mp3FrameCounterError("INVALID_ID3_TAG", "The ID3v2 header is invalid.");
   }
 
-  // The ID3v2 size field starts at byte 6 and stores only the tag body size.
+  // The ID3v2 size field starts at byte 6 and stores only the tag body size (bytes 6-9).
   const tagSize = readSynchsafeInt(bytes, 6);
 
   // ID3v2.4 can add a 10-byte footer when flag bit 4 is set.
@@ -281,11 +281,12 @@ function readSynchsafeInt(bytes: Uint8Array, offset: number): number {
     bytes[offset + 3],
   ] as const;
 
-  // Synchsafe integers use only 7 bits per byte, so each high bit must be zero.
+  // Synchsafe integers use only 7 bits per byte, so each high bit must be zero. (byte & 128) !==0
   if (sizeBytes.some((byte) => byte === undefined || (byte & 0x80) !== 0)) {
     throw new Mp3FrameCounterError("INVALID_ID3_TAG", "The ID3v2 tag size is invalid.");
   }
 
+  // The 28-bit synchsafe integer is stored big-endian across four bytes.
   return (
     ((sizeBytes[0] ?? 0) << 21) |
     ((sizeBytes[1] ?? 0) << 14) |
@@ -306,8 +307,10 @@ function hasId3v1Tag(bytes: Uint8Array): boolean {
   );
 }
 
-function readUint32Be(bytes: Uint8Array, offset: number): number {
+// Reads a 32-bit unsigned integer from the given bytes in big-endian format.
+function readUint32BigEndian(bytes: Uint8Array, offset: number): number {
   // MP3 header bits are defined big-endian across four bytes.
+  // Treat 4 header bytes as one 32-bit unsigned integer for easier bit manipulation. 
   return (
     (((bytes[offset] ?? 0) << 24) >>> 0) |
     ((bytes[offset + 1] ?? 0) << 16) |
