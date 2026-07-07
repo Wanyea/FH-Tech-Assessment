@@ -8,5 +8,5 @@
     "types": ["node", "vitest/globals"],
     "noEmit": true
   },
-  "include": ["tests/**/*.ts", "scripts/**/*.ts", "src/server/**/*.ts", "src/mp3/**/*.ts"]
+  "include": ["tests/**/*.ts", "tools/**/*.ts", "src/server/**/*.ts", "src/mp3/**/*.ts"]
 }

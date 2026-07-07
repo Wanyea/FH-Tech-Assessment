@@ -16,8 +16,8 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "validate:sample": "tsx scripts/validate-sample.ts tests/fixtures/sample.mp3 6089",
-    "generate:fixtures": "tsx scripts/generate-synthetic-fixtures.ts"
+    "validate:sample": "tsx tools/validate-sample.ts tests/fixtures/sample.mp3 6089",
+    "generate:fixtures": "tsx tools/generate-synthetic-fixtures.ts"
   },
   "dependencies": {
     "express": "^4.18.3",
