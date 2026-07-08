@@ -10,8 +10,7 @@ const MPEG_LAYER_III = 0b01; // Layer III is indicated by the bits 01 in the lay
 // Every MP3 frame begins with an 11-bit sync word. The mask isolates those bits
 // from the 32-bit frame header so random data does not parse as a frame.
 
-
-// NOTE: I am waiting to hear back from Jack on is we need to actually 
+// NOTE: I am waiting to hear back from Jack on is we need to actually
 // need to go through validation of frame (I suspect we will...)
 
 const SYNC_MASK = 0xffe00000 >>> 0;
@@ -52,8 +51,8 @@ export interface Mp3FrameHeader {
   sampleRateHz: number;
   paddingBytes: number;
   frameLengthBytes: number;
-  channelMode: number; // For mono we allocate 21 bytes for side information, and for stereo we allocate 36 bytes. 
-                       // This is used to calculate the offset of the Xing/Info metadata frame.
+  channelMode: number; // For mono we allocate 21 bytes for side information, and for stereo we allocate 36 bytes.
+  // This is used to calculate the offset of the Xing/Info metadata frame.
 }
 
 export interface Mp3FrameCountResult {
@@ -93,7 +92,8 @@ export function countMp3Frames(input: Uint8Array): Mp3FrameCountResult {
   let lastFrameEndOffset = offset;
   let firstFrameHeader: Mp3FrameHeader | null = null;
 
-  while (offset <= effectiveLength - 4) { // Each audio frame has at leadt a 4 byte header
+  while (offset <= effectiveLength - 4) {
+    // Each audio frame has at least a 4 byte header
     const frame = parseMpeg1Layer3FrameHeader(input, offset);
 
     if (!frame) {
@@ -218,8 +218,8 @@ export function parseMpeg1Layer3FrameHeader(
   const channelMode = (header >>> 6) & 0b11;
 
   // MPEG1 Layer III frame length:
-  // floor((144 * bitrate bits/sec) / sample rate Hz + optional padding byte) where the bitrate is in bits per second, not kilobits per second 
-  // and 144 is a constant derived from the MPEG1 Layer III frame length formula 
+  // floor((144 * bitrate bits/sec) / sample rate Hz + optional padding byte) where the bitrate is in bits per second, not kilobits per second
+  // and 144 is a constant derived from the MPEG1 Layer III frame length formula
   // (144 is bytes per frame: 1152 samples per frame / 8 bits per byte).
   const frameLengthBytes = Math.floor((144 * bitrateKbps * 1000) / sampleRateHz + paddingBytes);
 
@@ -310,7 +310,7 @@ function hasId3v1Tag(bytes: Uint8Array): boolean {
 // Reads a 32-bit unsigned integer from the given bytes in big-endian format.
 function readUint32BigEndian(bytes: Uint8Array, offset: number): number {
   // MP3 header bits are defined big-endian across four bytes.
-  // Treat 4 header bytes as one 32-bit unsigned integer for easier bit manipulation. 
+  // Treat 4 header bytes as one 32-bit unsigned integer for easier bit manipulation.
   return (
     (((bytes[offset] ?? 0) << 24) >>> 0) |
     ((bytes[offset + 1] ?? 0) << 16) |

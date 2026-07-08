@@ -9,16 +9,7 @@ import {
 } from "lucide-react";
 import { type ChangeEvent, type DragEvent, useMemo, useRef, useState } from "react";
 
-interface UploadSuccessResponse {
-  frameCount: number;
-}
-
-interface UploadErrorResponse {
-  error?: {
-    code?: string;
-    message?: string;
-  };
-}
+import { getMp3FileValidationError, uploadFile } from "./uploadClient";
 
 interface AnalysisHistoryItem {
   id: string;
@@ -97,11 +88,12 @@ export function App(): JSX.Element {
       return;
     }
 
-    // The server performs its own validation; this only gives immediate feedback.
-    if (!file.name.toLowerCase().endsWith(".mp3")) {
+    const validationError = getMp3FileValidationError(file);
+
+    if (validationError) {
       setSelectedFile(null);
       setStatus("error");
-      setErrorMessage("Choose an .mp3 file.");
+      setErrorMessage(validationError);
       return;
     }
 
@@ -113,6 +105,14 @@ export function App(): JSX.Element {
     if (!selectedFile) {
       setStatus("error");
       setErrorMessage("Choose an .mp3 file.");
+      return;
+    }
+
+    const validationError = getMp3FileValidationError(selectedFile);
+
+    if (validationError) {
+      setStatus("error");
+      setErrorMessage(validationError);
       return;
     }
 
@@ -267,43 +267,6 @@ export function App(): JSX.Element {
       </section>
     </main>
   );
-}
-
-async function uploadFile(file: File): Promise<number> {
-  const formData = new FormData();
-
-  // The field name must match uploadMiddleware.single("file").
-  formData.append("file", file);
-
-  const response = await fetch("/file-upload", {
-    method: "POST",
-    body: formData,
-  });
-
-  // safeJson prevents malformed server responses from crashing the UI path.
-  const payload = (await safeJson(response)) as UploadSuccessResponse | UploadErrorResponse | null;
-
-  if (!response.ok) {
-    const message =
-      payload && "error" in payload && payload.error?.message
-        ? payload.error.message
-        : "The server rejected the upload.";
-    throw new Error(message);
-  }
-
-  if (!payload || !("frameCount" in payload) || typeof payload.frameCount !== "number") {
-    throw new Error("The server returned an unexpected response.");
-  }
-
-  return payload.frameCount;
-}
-
-async function safeJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
 }
 
 function formatBytes(bytes: number): string {
