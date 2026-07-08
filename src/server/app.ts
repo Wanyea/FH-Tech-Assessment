@@ -35,8 +35,8 @@ export function createApp(): express.Express {
     });
   });
 
-  // Multer parses data and stores the uploaded file on disk. 
-  // Main endpoint and JSON response for the MP3 frame count expected by the acceptannce criteria. (Hello FH devs lol)
+  // Multer parses multipart data and stores the uploaded file on disk.
+  // The route returns only the public frame-count JSON response.
   app.post(
     "/file-upload",
     uploadMiddleware.single("file"),

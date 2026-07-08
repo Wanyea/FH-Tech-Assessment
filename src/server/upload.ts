@@ -7,8 +7,6 @@ import multer from "multer";
 import { UnsupportedMediaTypeError } from "./errors.js";
 
 // 25 MiB default limit, overridable with MAX_UPLOAD_BYTES.
-// TODO: Will reeevalute optimizations and remove this limit later.
-
 const DEFAULT_MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 // Disk storage keeps uploaded bytes out of the Node process heap.
