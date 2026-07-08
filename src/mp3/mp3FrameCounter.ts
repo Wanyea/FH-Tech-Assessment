@@ -9,10 +9,6 @@ const MPEG_LAYER_III = 0b01; // Layer III is indicated by the bits 01 in the lay
 
 // Every MP3 frame begins with an 11-bit sync word. The mask isolates those bits
 // from the 32-bit frame header so random data does not parse as a frame.
-
-// NOTE: I am waiting to hear back from Jack on is we need to actually
-// need to go through validation of frame (I suspect we will...)
-
 const SYNC_MASK = 0xffe00000 >>> 0;
 const SYNC_VALUE = 0xffe00000 >>> 0;
 
@@ -51,8 +47,8 @@ export interface Mp3FrameHeader {
   sampleRateHz: number;
   paddingBytes: number;
   frameLengthBytes: number;
-  channelMode: number; // For mono we allocate 21 bytes for side information, and for stereo we allocate 36 bytes.
-  // This is used to calculate the offset of the Xing/Info metadata frame.
+  // Used to locate possible Xing/Info metadata after the side-information block.
+  channelMode: number;
 }
 
 export interface Mp3FrameCountResult {
@@ -82,8 +78,7 @@ export function countMp3Frames(input: Uint8Array): Mp3FrameCountResult {
 
   const id3v2BytesSkipped = getId3v2SkipLength(input);
 
-  // Based on my search, ID3v1 metadata is always a 128-byte footer, so the parser excludes that
-  // footer from the audio-data scan when it is present.
+  // ID3v1 metadata is a trailing 128-byte tag, so exclude it from the audio scan.
   const effectiveLength = hasId3v1Tag(input) ? input.length - 128 : input.length;
 
   let offset = id3v2BytesSkipped;
@@ -93,7 +88,7 @@ export function countMp3Frames(input: Uint8Array): Mp3FrameCountResult {
   let firstFrameHeader: Mp3FrameHeader | null = null;
 
   while (offset <= effectiveLength - 4) {
-    // Each audio frame has at least a 4 byte header
+    // A complete MPEG audio frame header is 4 bytes.
     const frame = parseMpeg1Layer3FrameHeader(input, offset);
 
     if (!frame) {
